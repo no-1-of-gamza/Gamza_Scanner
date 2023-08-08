@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 def print_welcome_message():
     welcome_message = """
-    ______                                _______                                       
+    _____                                 ______                                       
     |  __ \                               /  ___|                                       
     | |  \/  __ _  _ __ ___   ____  __ _  \ `--.   ___   __ _  _ __   _ __    ___  _ __ 
     | | __  / _` || '_ ` _ \ |_  / / _` |  `--. \ / __| / _` || '_ \ | '_ \  / _ \| '__|
@@ -34,7 +34,7 @@ def tcp_scan(host, port,thread_ids):
         thread_id = threading.get_ident()
         thread_ids.add(thread_id)
 
-    time.sleep(0.5)
+    # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(0.5)
@@ -119,7 +119,7 @@ def main():
 
     # 멀티스레딩 카운트 및 레이스컨디션 방지 글로벌 변수로 선언 해야함 
     #사용할 스레드 개수
-    num_threads = 30 #기본적으로 16개고정
+    num_threads = 10 #기본적으로 16개고정
     thread_ids = set()
 
     multi_threading(num_threads,thread_ids,target_host,ports)
