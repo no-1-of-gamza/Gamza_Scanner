@@ -64,7 +64,7 @@ def tcp_scan(host, port,thread_ids):
         print("Couldn't connect to server.")
         sys.exit()
 
-def udp_scan(host, port,thread_ids):
+def udp_scan(host, port, thread_ids):
     
     lock = threading.Lock()
     
@@ -148,13 +148,22 @@ def banner_grabbing(target_host, target_port, sock):
 def multi_threading(num_threads, thread_ids, target_host, ports):
     open_ports = []
     closed_ports = []
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [executor.submit(tcp_scan, target_host, port, thread_ids) for port in ports]
-        total_ports = len(ports)
+        # tcp_scan 함수 병렬 실행
+        tcp_futures = [
+            executor.submit(tcp_scan, target_host, port, thread_ids) for port in ports
+        ]
+        
+        # udp_scan 함수 병렬 실행
+        udp_futures = [
+            executor.submit(udp_scan, target_host, port, thread_ids) for port in ports
+        ]
+        
+        total_ports = len(ports) * 2
 
         with tqdm(total=total_ports, desc="Scanning Ports", unit="port") as pbar:
-            for future in concurrent.futures.as_completed(futures):
+            # 모든 tcp_scan 및 udp_scan 작업을 대기
+            for future in concurrent.futures.as_completed(tcp_futures + udp_futures):
                 pbar.update(1)
                 thread_id, port, is_open, sock = future.result()
                 if is_open or sock is not None:
@@ -211,6 +220,7 @@ def main():
 
     multi_threading(num_threads,thread_ids,target_host,ports)
     tcp_scan(target_host,start_num,thread_ids)
+    udp_scan(target_host,start_num,thread_ids)
     print(f"\nDetected : {start_num} - {end_num} port in {target_host}\n")
 
 if __name__ == "__main__":
