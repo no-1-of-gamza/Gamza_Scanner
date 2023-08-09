@@ -7,7 +7,10 @@ import time
 import os
 from tqdm import tqdm
 import json
+import argparse
 
+
+#!랜덤소스도 고려해야할 부분!
 
 def print_welcome_message():
     welcome_message = """
@@ -33,7 +36,26 @@ def load_rule_set(json_file_path):
     
     print()
 
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Gamza Scanner - 포트 스캐닝 도구")
+    parser.add_argument("target_host", help="대상 호스트의 IP 주소")
+    parser.add_argument("-p", "--ports", nargs="+", type=int, default=range(1, 1025),
+                        help="스캔할 특정 포트 번호 (공백으로 구분하여 입력)")
+    parser.add_argument("-t", "--threads", type=int, default=16,
+                        help="스캔에 사용할 스레드 수")
+    parser.add_argument("-sU", "--udp", action="store_true", help="UDP 스캔 수행")
+    parser.add_argument("-sT", "--tcp", action="store_true", default=True, help="TCP 스캔 수행")
+    return parser.parse_args()
 
+'''
+기본 사용법: python Gamza_Scanner.py 192.168.1.1
+기본 스캔 : TCP Open Scan
+
+포트 지정: python Gamza_Scanner.py 192.168.1.1 -p 80 443 8080
+스레드 수 지정: python Gamza_Scanner.py 192.168.1.1 -t 8
+UDP 스캔 수행: python Gamza_Scanner.py 192.168.1.1 -sU
+TCP 스캔 수행 : python Gamza_Scanner.py 192.168.1.1 -sT
+'''
 
 def tcp_scan(host, port,thread_ids):
     
@@ -65,6 +87,7 @@ def tcp_scan(host, port,thread_ids):
         sys.exit()
 
 def udp_scan(host, port,thread_ids):
+# UDP 데이터 송신 응답인증을 하지 않기 때문에 TCP랑 분리하는게좋다 
     
     lock = threading.Lock()
     
@@ -127,6 +150,8 @@ def banner_grabbing(target_host, target_port, sock):
     try:
     # Get을 하지 않으면 서버에서 응답을 하지 않음 
         sock.send(b'GET / HTTP/1.1\r\nHost: ' + target_host.encode() + b'\r\n\r\n')
+    # 보내는 정보를 고도화 할 필요가 있음 악성패킷으로 인식가능
+    #
     # 배너 정보 수신
         banner = sock.recv(1024).decode().strip()
         banner_lines = banner.split('\n')
@@ -188,6 +213,9 @@ def main():
     #아스키아트 출력
     print_welcome_message()
 
+    #옵션값 가져오기
+    args = parse_arguments()
+
     #rule_set 경로
     json_file_path = 'rule_set.json'
 
@@ -195,23 +223,35 @@ def main():
     if len(sys.argv) < 2:
         print("\n python Gamza_Scanner.py YourIP!")
         return
-    #사용지 지정 포트
-    start_num = 1
-    end_num = 1024
-    ports = list(range(start_num, end_num + 1))
-    # 식별 우선순위 (잘알려진 서비스 ex)HTTP, SSH)
-    random.shuffle(ports)
-
-    #Target_host IP
+    #Target_host IP 반드시 입력
     target_host = sys.argv[1]
 
-    #사용할 스레드 개수
-    num_threads = 16 #기본적으로 16개고정
+    # Target_host IP 반드시 입력
+    target_host = args.target_host
+
+    # 사용할 스레드 개수
+    num_threads = args.threads
     thread_ids = set()
 
-    multi_threading(num_threads,thread_ids,target_host,ports)
-    tcp_scan(target_host,start_num,thread_ids)
-    print(f"\nDetected : {start_num} - {end_num} port in {target_host}\n")
+    if args.tcp:
+        # TCP 스캔 수행
+        start_num = args.ports[0]
+        end_num = args.ports[-1]
+        ports = list(args.ports)  # range 객체를 리스트로 변환
+        random.shuffle(ports)
+        multi_threading(num_threads, thread_ids, target_host, ports)
+        tcp_scan(target_host, start_num, thread_ids)
+        print(f"\n Protocol : TCP // Detected Ports : {start_num} - {end_num} // Target Host :({target_host})\n")
+
+    if args.udp:
+        # UDP 스캔 수행
+        start_num = args.ports[0]
+        end_num = args.ports[-1]
+        ports = list(args.ports)  # range 객체를 리스트로 변환
+        random.shuffle(ports)
+        multi_threading(num_threads, thread_ids, target_host, ports)
+        udp_scan(target_host, start_num, thread_ids)
+        print(f"\n Protocol : UDP // Detected Ports : {start_num} - {end_num} // Target Host :({target_host})\n")
 
 if __name__ == "__main__":
     main()
