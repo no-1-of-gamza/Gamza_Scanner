@@ -23,8 +23,6 @@ def print_welcome_message():
 
     Welcome to Port Scanner!
 
-    Scanning for Well-Known Port
-
     """
     #os.system('clear')  # 화면을 지우는 명령어 (Linux/Mac)
     print(welcome_message)
@@ -41,10 +39,12 @@ def parse_arguments():
     parser.add_argument("target_host", help="대상 호스트의 IP 주소")
     parser.add_argument("-p", "--ports", nargs="+", type=int, default=range(1, 1025),
                         help="스캔할 특정 포트 번호 (공백으로 구분하여 입력)")
-    parser.add_argument("-t", "--threads", type=int, default=16,
-                        help="스캔에 사용할 스레드 수")
-    parser.add_argument("-sU", "--udp", action="store_true", help="UDP 스캔 수행")
-    parser.add_argument("-sT", "--tcp", action="store_true", default=True, help="TCP 스캔 수행")
+    parser.add_argument("-t", "--threads", type=int, default=16, help="Thread")
+
+    parser.add_argument("-sT", "--tcp", action="store_true", default=True, help="TCP Scan")
+    parser.add_argument("-sU", "--udp", action="store_true", help="UDP Scan")
+
+
     return parser.parse_args()
 
 '''
@@ -68,7 +68,7 @@ def tcp_scan(host, port,thread_ids):
     # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.1)
+        sock.settimeout(0.3)
         result = sock.connect_ex((host, port))
         if result == 0:
             return thread_id, port, True, sock
@@ -98,7 +98,7 @@ def udp_scan(host, port,thread_ids):
     # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.1)
+        sock.settimeout(0.2)
         result = sock.connect_ex((host, port))
         if result == 0:
             return thread_id, port, True, sock
@@ -127,7 +127,7 @@ def tcp_half_scan(host, port,thread_ids):
     # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.1)
+        sock.settimeout(0.2)
         result = sock.connect_ex((host, port))
         if result == 0:
             return thread_id, port, True, sock
@@ -155,7 +155,7 @@ def banner_grabbing(target_host, target_port, sock):
     # 배너 정보 수신
         banner = sock.recv(1024).decode().strip()
         banner_lines = banner.split('\n')
-        banner = banner_lines[:3]
+        banner = banner_lines[:4]
 
         print(f"{banner}")
         return banner
@@ -170,12 +170,12 @@ def banner_grabbing(target_host, target_port, sock):
     # 소켓 종료
         sock.close()
 
-def multi_threading(num_threads, thread_ids, target_host, ports):
+def multi_threading(num_threads, thread_ids, target_host, ports, scan):
     open_ports = []
     closed_ports = []
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [executor.submit(tcp_scan, target_host, port, thread_ids) for port in ports]
+        futures = [executor.submit(scan, target_host, port, thread_ids) for port in ports]
         total_ports = len(ports)
 
         with tqdm(total=total_ports, desc="Scanning Ports", unit="port") as pbar:
@@ -184,6 +184,7 @@ def multi_threading(num_threads, thread_ids, target_host, ports):
                 thread_id, port, is_open, sock = future.result()
                 if is_open or sock is not None:
                     open_ports.append(port)
+                    # Open Port 성공 시에만 배너그래빙
                     banner_grabbing(target_host, port, sock)
                 else:
                     closed_ports.append(port)
@@ -233,25 +234,27 @@ def main():
     num_threads = args.threads
     thread_ids = set()
 
-    if args.tcp:
-        # TCP 스캔 수행
-        start_num = args.ports[0]
-        end_num = args.ports[-1]
-        ports = list(args.ports)  # range 객체를 리스트로 변환
-        random.shuffle(ports)
-        multi_threading(num_threads, thread_ids, target_host, ports)
-        tcp_scan(target_host, start_num, thread_ids)
-        print(f"\n Protocol : TCP // Detected Ports : {start_num} - {end_num} // Target Host :({target_host})\n")
-
     if args.udp:
         # UDP 스캔 수행
+        scan =udp_scan
+        start_num = args.ports[0]
+        end_num = args.ports[-1]
+        ports = list(args.ports)
+        random.shuffle(ports)
+        multi_threading(num_threads, thread_ids, target_host, ports,scan)
+        udp_scan(target_host, start_num, thread_ids)
+        print(f"\nProtocol : TCP \nDetected Ports : {start_num}~{end_num} \nTarget Host :({target_host})\n")
+
+    elif args.tcp:
+        # TCP 스캔 수행
+        scan =tcp_scan
         start_num = args.ports[0]
         end_num = args.ports[-1]
         ports = list(args.ports)  # range 객체를 리스트로 변환
         random.shuffle(ports)
-        multi_threading(num_threads, thread_ids, target_host, ports)
-        udp_scan(target_host, start_num, thread_ids)
-        print(f"\n Protocol : UDP // Detected Ports : {start_num} - {end_num} // Target Host :({target_host})\n")
+        multi_threading(num_threads, thread_ids, target_host, ports, scan)
+        tcp_scan(target_host, start_num, thread_ids)
+        print(f"\nProtocol : TCP \nDetected Ports : {start_num}~{end_num} \nTarget Host :{target_host}\n")
 
 if __name__ == "__main__":
     main()
