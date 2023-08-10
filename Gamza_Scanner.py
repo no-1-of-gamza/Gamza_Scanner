@@ -157,7 +157,7 @@ def banner_grabbing(target_host, target_port, sock):
         banner_lines = banner.split('\n')
         banner = banner_lines[:4]
 
-        print(f"{banner}")
+        #print(f"{banner}")
         return banner
     
     except ConnectionRefusedError:
@@ -173,6 +173,7 @@ def banner_grabbing(target_host, target_port, sock):
 def multi_threading(num_threads, thread_ids, target_host, ports, scan):
     open_ports = []
     closed_ports = []
+    banner = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(scan, target_host, port, thread_ids) for port in ports]
@@ -185,12 +186,15 @@ def multi_threading(num_threads, thread_ids, target_host, ports, scan):
                 if is_open or sock is not None:
                     open_ports.append(port)
                     # Open Port 성공 시에만 배너그래빙
-                    banner_grabbing(target_host, port, sock)
+                    banner[port] = banner_grabbing(target_host, port, sock)
+
+                    
                 else:
                     closed_ports.append(port)
-    result_printing(thread_ids, closed_ports, open_ports)
 
-def result_printing(thread_ids,closed_ports,open_ports):
+    result_printing(thread_ids, closed_ports, open_ports, banner)
+
+def result_printing(thread_ids,closed_ports,open_ports, banner):
     print("\nUsed thread IDs:")
     print(', '.join(map(str, thread_ids)))
 
@@ -202,12 +206,17 @@ def result_printing(thread_ids,closed_ports,open_ports):
     #closed 포트 비출력
     #print("\nClosed ports:")
     #print(', '.join(map(str, closed_ports)))
+    print("\nBanner Data:")
+    #print(', '.join(map(str, banner)))
+    for key, value in banner.items():
+        print(key, value)
 
     print("\nOpen ports:")
     print(', '.join(map(str, open_ports)))
-    print(f"Total open ports: {len(open_ports)}")
-
+    print(f"\nTotal open ports: {len(open_ports)}")
     print(f"Total closed ports: {len(closed_ports)}")
+    
+
     
 def main():
 
