@@ -71,11 +71,15 @@ def tcp_scan(host, port,thread_ids):
         sock.settimeout(0.15)
         result = sock.connect_ex((host, port))
         if result == 0:
-            return thread_id, port, True, sock
+            return thread_id, port, True, sock, result
+        elif result == 61:
+            sock.close()
+            sock = None
+            return thread_id, port, False, sock, result
         else:
             sock.close()
             sock = None
-            return thread_id, port, False, sock
+            return thread_id, port, False, sock, result
     except KeyboardInterrupt:
         print("\nExiting program.")
         sys.exit()
@@ -95,17 +99,20 @@ def udp_scan(host, port,thread_ids):
         thread_id = threading.get_ident()
         thread_ids.add(thread_id)
 
-    # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(0.15)
-        result = sock.connect_ex((host, port))
-        if result == 0:
-            return thread_id, port, True, sock
-        else:
-            sock.close()
-            sock = None
-            return thread_id, port, False, sock
+        sock.settimeout(0.1)
+        result = sock.sendto(b'', (host, port))
+        try:
+            response, _ = sock.recvfrom(1024)  # 응답 확인
+            if response:
+                return thread_id, port, True, sock, None
+        except socket.timeout:
+            pass
+        sock.close()
+        sock = None
+        return thread_id, port, False, sock, None
+    
     except KeyboardInterrupt:
         print("\nExiting program.")
         sys.exit()
@@ -115,47 +122,25 @@ def udp_scan(host, port,thread_ids):
     except socket.error:
         print("Couldn't connect to server.")
         sys.exit()
-
-def tcp_half_scan(host, port,thread_ids):
-    
-    lock = threading.Lock()
-    
-    with lock:
-        thread_id = threading.get_ident()
-        thread_ids.add(thread_id)
-
-    # time.sleep(0.5) TCP 연결 상태보고 조절 
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.15)
-        result = sock.connect_ex((host, port))
-        if result == 0:
-            return thread_id, port, True, sock
-        else:
-            sock.close()
-            sock = None
-            return thread_id, port, False, sock
-    except KeyboardInterrupt:
-        print("\nExiting program.")
-        sys.exit()
-    except socket.gaierror:
-        print("Hostname could not be resolved.")
-        sys.exit()
-    except socket.error:
-        print("Couldn't connect to server.")
-        sys.exit()
-
 
 def banner_grabbing(target_host, target_port, sock):
     try:
-    # Get을 하지 않으면 서버에서 응답을 하지 않음 
-        sock.send(b'GET / HTTP/1.1\r\nHost: ' + target_host.encode() + b'\r\n\r\n')
+    # Get을 하지 않으면 서버에서 응답을 하지 않음
+        body = "param1=value1&param2=value2"
+        request = f"POST / HTTP/1.1\r\n"
+        request += f"Host: {target_host}\r\n"
+        request += "Content-Type: application/x-www-form-urlencoded\r\n"
+        request += f"Content-Length: {len(body)}\r\n"
+        request += "\r\n"
+        request += body
+    #sock.send(b'POST / HTTP/1.1\r\nHost: ' + target_host.encode() + b'\r\n\r\n')
     # 보내는 정보를 고도화 할 필요가 있음 악성패킷으로 인식가능
-    #
+        sock.send(request.encode())
     # 배너 정보 수신
-        banner = sock.recv(1024).decode().strip()
+        banner = sock.recv(4096).decode().strip()
+        
         banner_lines = banner.split('\n')
-        banner = banner_lines[:4]
+        banner = banner_lines[:3]
 
         #print(f"{banner}")
         return banner
@@ -173,26 +158,39 @@ def banner_grabbing(target_host, target_port, sock):
 def multi_threading(num_threads, thread_ids, target_host, ports, scan):
     open_ports = []
     closed_ports = []
+    filtered_ports = []
     banner = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(scan, target_host, port, thread_ids) for port in ports]
         total_ports = len(ports)
-
         with tqdm(total=total_ports, desc="Scanning Ports", unit="port") as pbar:
             for future in concurrent.futures.as_completed(futures):
                 pbar.update(1)
-                thread_id, port, is_open, sock = future.result()
+                thread_id, port, is_open, sock, result = future.result()
                 if is_open or sock is not None:
                     open_ports.append(port)
                     # Open Port 성공 시에만 배너그래빙
-                    banner[port] = banner_grabbing(target_host, port, sock)                   
+                    banner[port] = banner_grabbing(target_host, port, sock)
+                    #배너그래빙 이외의 그래빙
+                    if banner[port] == None:
+                        print("banner is  ")
+
+                    #시그니처 판단
+                    
+                    sock.close()           
+                elif result == 61:
+                   filtered_ports.append(port)
                 else:
                     closed_ports.append(port)
 
-    result_printing(thread_ids, closed_ports, open_ports, banner)
+    result_printing(thread_ids, filtered_ports, closed_ports, open_ports, banner)
 
-def result_printing(thread_ids,closed_ports,open_ports, banner):
+def smtp_grabbing():
+    print()
+
+
+def result_printing(thread_ids, filtered_ports, closed_ports,open_ports, banner):
     print("\nUsed thread IDs:")
     print(', '.join(map(str, thread_ids)))
 
@@ -201,9 +199,6 @@ def result_printing(thread_ids,closed_ports,open_ports, banner):
     closed_ports.sort()  
     open_ports.sort()   
 
-    #closed 포트 비출력
-    #print("\nClosed ports:")
-    #print(', '.join(map(str, closed_ports)))
     print("\nBanner Data:")
     #print(', '.join(map(str, banner)))
     for key, value in banner.items():
@@ -211,8 +206,17 @@ def result_printing(thread_ids,closed_ports,open_ports, banner):
 
     print("\nOpen ports:")
     print(', '.join(map(str, open_ports)))
+
+    #closed 포트 비출력
+    #print("\nClosed ports:")
+    #print(', '.join(map(str, closed_ports)))
+
+    #print("\nfiltered ports:")
+    #print(', '.join(map(str, filtered_ports)))   
+
     print(f"\nTotal open ports: {len(open_ports)}")
     print(f"Total closed ports: {len(closed_ports)}")
+    print(f"Total filtered ports: {len(filtered_ports)}")
     
     
 def main():
