@@ -92,7 +92,7 @@ def tcp_scan(host, port,thread_ids):
         print("Couldn't connect to server.")
         sys.exit()
 
-def udp_scan(host, port,thread_ids):
+def udp_scan(host, port,thread_ids): #UDP 스캔 수정 필요
 # UDP 데이터 송신 응답인증을 하지 않기 때문에 TCP랑 분리하는게좋다 
     
     lock = threading.Lock()
@@ -105,6 +105,7 @@ def udp_scan(host, port,thread_ids):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(0.1)
         result = sock.sendto(b'', (host, port))
+        
         try:
             response, _ = sock.recvfrom(1024)  # 응답 확인
             if response:
@@ -219,10 +220,6 @@ def multi_threading(num_threads, thread_ids, target_host, ports, scan):
 
 def Service_Detected(Service):
     print()
-
-def smtp_grabbing():
-    print()
-
 
 def result_printing(thread_ids, filtered_ports, closed_ports,open_ports, Service):
     print("\nUsed thread IDs:")
