@@ -1,0 +1,57 @@
+{
+    "OS": {
+        "Ubuntu": "Ubuntu",
+        "Windows": "",
+        "CentOS":"CentOS"
+    },
+
+    "Server": {
+
+        "Apache":"Apache",
+        "Microsoft":"Microsoft"
+
+
+
+    },
+
+    "Port":
+    {
+
+        "time":"37",
+        "name_server":"42",
+        "nicname":"43",
+        "tacas":"49",
+        "DNS":"53",
+        "bootps":"67",
+        "bootpc":"68"
+    },
+
+    "Service": {
+        "tcpmux": "+",
+        "echo": "echo",
+        "discard": "",
+        "systat": "",
+        "daytime": [
+            "\\[(?:오전|오후) \\d{1,2}:\\d{1,2}:\\d{1,2} \\d{4}-\\d{2}-\\d{2}\\]",
+            "\\[\\w+, \\w+ \\d{1,2}, \\d{4} \\d{2}:\\d{2}:\\d{2}-\\w+\\]",
+            "\\[\\w+ \\w+ \\d{1,2} \\d{2}:\\d{2}:\\d{2} \\d{4}\\]"
+        ],
+        "chargen":"[!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\\\]^_`abcdefg]",
+        "FTP":["FTP"],
+        "SSH":["SSH","OpenSSH"],
+        "Telnet":"Telnet",
+        "SMTP":["SMTP","ESMTP"],
+        "HTTP":["HTTP","HTTP/1.1","HTTP/1.2"],
+        "domain":
+
+
+
+      
+
+
+
+    }
+
+
+
+}

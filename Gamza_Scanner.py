@@ -8,6 +8,8 @@ import os
 from tqdm import tqdm
 import json
 import argparse
+from ftplib import FTP
+import whois
 
 
 #!랜덤소스도 고려해야할 부분!
@@ -156,10 +158,11 @@ def banner_grabbing(target_host, target_port, sock):
         sock.close()
 
 def multi_threading(num_threads, thread_ids, target_host, ports, scan):
+
     open_ports = []
     closed_ports = []
     filtered_ports = []
-    banner = {}
+    Service = {}
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = [executor.submit(scan, target_host, port, thread_ids) for port in ports]
@@ -170,27 +173,58 @@ def multi_threading(num_threads, thread_ids, target_host, ports, scan):
                 thread_id, port, is_open, sock, result = future.result()
                 if is_open or sock is not None:
                     open_ports.append(port)
-                    # Open Port 성공 시에만 배너그래빙
-                    banner[port] = banner_grabbing(target_host, port, sock)
-                    #배너그래빙 이외의 그래빙
-                    if banner[port] == None:
-                        print("banner is  ")
+                    #포트열려있음
 
-                    #시그니처 판단
+                    #서비스식별
+                    # 배너그래빙
+                    try:
+                        Service[port] = banner_grabbing(target_host, port, sock)
+                    except Exception as e:
+                        print("An error occurred while banner grabbing:", e)
+                        pass 
+                    try:
+                        # tcpmux 확인
+                        sock.send("help\r\n".encode())
+                        sock_recv= sock.recv(4096).decode()
+                        if sock.recv == "+" :
+                            Service[port] = {sock_recv}
+                    except Exception as e:
+                        #print("An error occurred while sending help request:", e)
+                        pass
+                    # echo 확인
+                    try:
+                        sock.send(b"echo")
+                        sock_recv= sock.recv(4096).decode()
+                        print(sock_recv)
+                        if sock.recv == "echo" :
+                            Service[port] = {sock_recv}
+                    except Exception as e:
+                        #print("An error occurred while testing echo:", e)
+                        pass
                     
-                    sock.close()           
+                
+
+
+                # 차단된 포트
                 elif result == 61:
                    filtered_ports.append(port)
+                # 닫혀 있는 포트
                 else:
                     closed_ports.append(port)
 
-    result_printing(thread_ids, filtered_ports, closed_ports, open_ports, banner)
+    #그래빙을 다 돌고 서비스 식별
+    #서비스식별
+    Service_Detected(Service)
+    result_printing(thread_ids, filtered_ports, closed_ports, open_ports, Service)
+
+def Service_Detected(Service):
+    print()
 
 def smtp_grabbing():
     print()
 
 
-def result_printing(thread_ids, filtered_ports, closed_ports,open_ports, banner):
+def result_printing(thread_ids, filtered_ports, closed_ports,open_ports, Service):
     print("\nUsed thread IDs:")
     print(', '.join(map(str, thread_ids)))
 
@@ -199,9 +233,9 @@ def result_printing(thread_ids, filtered_ports, closed_ports,open_ports, banner)
     closed_ports.sort()  
     open_ports.sort()   
 
-    print("\nBanner Data:")
-    #print(', '.join(map(str, banner)))
-    for key, value in banner.items():
+    print("\nService Detected:")
+    #print(', '.join(map(str, Service)))
+    for key, value in Service.items():
         print(key, value)
 
     print("\nOpen ports:")
