@@ -21,7 +21,7 @@ def port_scan_multi_threading(num_threads, thread_ids, target_host, ports, scan)
         with tqdm(total=total_ports, desc="Scanning Ports", unit="port") as pbar:
             for future in concurrent.futures.as_completed(futures):
                 pbar.update(1)
-                thread_id, port, is_open, sock, result = future.result()
+                port, is_open, sock, result = future.result()
                 if is_open or sock is not None:
                     open_ports.append(port)
                 # 차단된 포트
