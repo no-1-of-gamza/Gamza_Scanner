@@ -1,0 +1,14 @@
+socket
+random
+argparse
+threading
+concurrent.futures
+tqdm
+ftplib
+paramiko
+smtplib
+telnetlib
+dns.reversename
+dns.resolver
+tftpy
+requests
