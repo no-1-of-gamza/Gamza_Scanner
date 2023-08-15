@@ -186,21 +186,94 @@ def HTTP_conn(target_host, port, username, password):
         print(f"Connection error occurred: {conn_err}")
     
     except requests.exceptions.RequestException as req_err:
-        print(f"Request error occurred: {req_err}") 
+        print(f"Request error occurred: {req_err}")
 
-def scan_thread(service_func, target_host, port, username, password):
-    result = service_func(target_host, port, username, password)
-    if result:
-        with lock:
-            open_Services.append((service_func.__name__, port))
-    else:
-        with lock:
-            closed_Services.append((service_func.__name__, port))
+def POP3_conn(target_host, port, username, password):
+    import poplib
+    # POP3 서버에 연결
+    try:
+        pop3_connection = poplib.POP3(target_host)
 
+        # 계정 로그인
+        pop3_connection.user(username)
+        pop3_connection.pass_(password)
+                # 연결 및 로그인 성공 시, pop3_connection을 반환
+        return True
+
+    except poplib.error_proto as e:
+        print("POP3 연결 또는 로그인 오류:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+
+def Sunrpc_conn(target_host, port, username, password):
+    import xmlrpc.client
+
+    try:
+        # SunRPC 서버의 주소와 포트
+        server_address = f"{target_host}:{port}"
+
+        # XML-RPC 클라이언트 생성
+        client = xmlrpc.client.ServerProxy(server_address)
+
+        return True
+
+    except xmlrpc.client.Fault as e:
+        print("SunRPC 에러:", e.faultString)
+        return True
+    except ConnectionError as e:
+        print("연결 오류:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+  
+def NNTP_conn(target_host, port, username, password):
+    
+    import nntplib
+    # NNTP 서버 정보
+    server_address = target_host
+    # NNTP 서버에 연결
+    try:
+        nntp_connection = nntplib.NNTP(server_address)
+        return True
+    except nntplib.NNTPError as e:
+        print("NNTP 에러:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+    finally:
+        nntp_connection.quit()
+
+def NetBIOS_conn(target_host, port, username, password):
+    from impacket.smbconnection import SMBConnection
+    service_name=nmb
+    conn = nmb.NetBIOS()
+    try:
+        remote_name = nmb.NetBIOS.queryIPForName(target_host)
+        if remote_name:
+            remote_name = remote_name[0]
+            print(f"Connecting to service '{service_name}' on {remote_name} ({target_host})")
+            
+            session = conn.connect(remote_name, service_name)
+            if session:
+                print("Connection successful!")
+                return True
+
+        else:
+            print("Unable to resolve IP address to NetBIOS name.")
+
+    except nmb.NetBIOSTimeout as e:
+        print("Connection timeout:", e)
+    except Exception as e:
+        print("Error:", e)
+    finally:
+        conn.close()
 
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "20.23.255.223"
+    target_host = "162.212.101.163"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -210,35 +283,24 @@ def main():
     username = "username"
     password = "password"
     
-    port = 80
+    port = 137
 
     #Daytime_conn(target_host, port) #13
     #FTP_conn(target_host, port, username, password) #21
     #SSH_conn(target_host, port, username, password) #22
     #telnet_conn(target_host, port) #23
     #SMTP_conn(target_host, port, username, password) #25
-    #DNS_conn(target_host) #53
+    #DNS_conn(target_host, port, username, password) #53
     #TFTP_conn(target_host, port) #69
     #finger_conn(target_host, port, username) #79
-    #HTTP_conn(target_host, port) #80
-
-    for port in port_list:
-        print(f"Scanning port {port}")
-
-        for service_func in service_functions:
-            thread = threading.Thread(target=scan_thread, args=(service_func, target_host, port, username, password))
-            threads.append(thread)
-            thread.start()
-
-    for thread in threads:
-        thread.join()
-
-    print("Open Services:", open_Services)
-    print("Closed Services:", closed_Services)
-    print("Unknown Services:", unknown_Services)
+    #HTTP_conn(target_host, port, username, password) #80
+    #POP3_conn(target_host, port, username, password) #110
+    #Sunrpc_conn(target_host, port, username, password)#111
+    #NNTP_conn(target_host, port, username, password)#119
+    NetBIOS_conn(target_host, port, username, password)
 
 
-
+                
 if __name__ == "__main__":
     main()
 
