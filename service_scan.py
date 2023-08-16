@@ -247,33 +247,145 @@ def NNTP_conn(target_host, port, username, password):
         nntp_connection.quit()
 
 def NetBIOS_conn(target_host, port, username, password):
-    from impacket.smbconnection import SMBConnection
-    service_name=nmb
-    conn = nmb.NetBIOS()
+    from impacket import nmb
     try:
-        remote_name = nmb.NetBIOS.queryIPForName(target_host)
-        if remote_name:
-            remote_name = remote_name[0]
-            print(f"Connecting to service '{service_name}' on {remote_name} ({target_host})")
+        netbios = nmb.NetBIOS()
+        name = netbios.getnetbiosname(target_host)
             
-            session = conn.connect(remote_name, service_name)
-            if session:
-                print("Connection successful!")
-                return True
-
+        if name:
+            print(f"IP address: {target_host} to host name : {name}")
+            return True
         else:
-            print("Unable to resolve IP address to NetBIOS name.")
-
-    except nmb.NetBIOSTimeout as e:
-        print("Connection timeout:", e)
+            print("Unable to resolve IP address for target.")
+            return False
     except Exception as e:
+        print("An error occurred:", e)
+        return False
+
+def IMAP_conn(target_host, port, username, password):
+    import imaplib
+    try:
+        imap_server = imaplib.IMAP4_SSL(target_host)
+        imap_server.login(username, password)
+        response, _ = imap_server.login(username, password)
+        
+        if response == 'OK':
+            return imap_server
+        else:
+            print("Login failed.")
+            return None
+    except imaplib.IMAP4_SSL.error as ssl_error:
+        print("SSL error:", ssl_error)
+        return True
+    except imaplib.IMAP4.error as imap_error:
+        print("IMAP error:", imap_error)
+        return True
+    except Exception as e:
+        print("An unexpected error occurred:", e)
+        return None
+
+def IRC_conn(target_host, port, username, password):
+    import irc.client
+    class IRCClient(irc.client.SimpleIRCClient):
+        def on_welcome(self, connection, event):
+            print("Connected to the server.")
+    client = IRCClient()
+
+    try:
+        client.connect(target_host, port, username)
+        client.start()
+        client.connection.disconnect()
+        print("Disconnected to the server.")
+        return True
+    except irc.client.ServerConnectionError as e:
         print("Error:", e)
+
+def LDAP_conn(target_host, port, username, password):
+    from ldap3 import Server, Connection
+    # LDAP 서버 정보 설정
+    server = Server(f'ldap://{target_host}:{port}')
+    # LDAP 서버에 연결
+    conn = Connection(server)
+    if conn.bind():
+        print("Connected to LDAP server")
+        # 연결 종료
+        conn.unbind()
+        return True
+    else:
+        print("Connection failed") 
+
+def SSL_conn(target_host, port, username, password):
+    import ssl
+    server_address = (target_host, port)
+    # 소켓 생성
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # SSL 연결 설정
+    ssl_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS)
+
+    try:
+        # 서버에 연결
+        ssl_sock.connect(server_address)
+
+        print("SSL connection established.")
+        return True
+
+    except socket.error as e:
+        print("Error:", e)
+
     finally:
-        conn.close()
+        # 연결 종료
+        ssl_sock.close()
+
+def SMB_conn(target_host, port, username, password):
+    from smbprotocol import exceptions
+    import smbclient
+
+    try:
+        smbclient.register_session(target_host, username="username", password="password")
+    except exceptions.LogonFailure:
+        print('failed to login')
+    except ValueError:
+        print('no service')
+    else:
+        print('success to login')
+
+def SMTPS_conn(target_host, port, username, password):
+    import smtplib
+    result = ''
+    try:
+        smtp = smtplib.SMTP_SSL(target_host, port)
+        smtp.quit()
+        return True
+    except:
+        result = 'error'
+
+def LPD_conn(target_host, port, username, password):
+    lpd_signature = b'\x02'  # LPD 프로토콜의 헤더 시그니처
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((target_host, port))
+        
+        sock.settimeout(2)  # 소켓 응답 대기 시간 설정 (초)
+
+        data = sock.recv(1)  # 한 바이트 데이터를 읽음
+
+        if data == lpd_signature:
+            print("LPD service is identified.")
+        else:
+            print("Not an LPD service.")
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+
+    finally:
+        sock.close()
+
 
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "162.212.101.163"
+    target_host = "118.178.203.100"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -283,8 +395,11 @@ def main():
     username = "username"
     password = "password"
     
-    port = 137
-
+    port = 515                                                                              
+    #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #result = sock.connect_ex((target_host, port))
+    
+    #banner_grabbing(target_host, port, sock)
     #Daytime_conn(target_host, port) #13
     #FTP_conn(target_host, port, username, password) #21
     #SSH_conn(target_host, port, username, password) #22
@@ -295,9 +410,16 @@ def main():
     #finger_conn(target_host, port, username) #79
     #HTTP_conn(target_host, port, username, password) #80
     #POP3_conn(target_host, port, username, password) #110
-    #Sunrpc_conn(target_host, port, username, password)#111
-    #NNTP_conn(target_host, port, username, password)#119
-    NetBIOS_conn(target_host, port, username, password)
+    #Sunrpc_conn(target_host, port, username, password) #111
+    #NNTP_conn(target_host, port, username, password) #119
+    #NetBIOS_conn(target_host, port, username, password) #139
+    #IMAP_conn(target_host, port, username, password) #143
+    #IRC_conn(target_host, port, username, password) #194, 6667 #커넥션이 안끊겨
+    #LDAP_conn(target_host, port, username, password)
+    #SSL_conn(target_host, port, username, password) #443
+    #SMB_conn(target_host, port, username, password) #445
+    #SMTPS_conn(target_host, port, username, password) #465
+    LPD_conn(target_host, port, username, password) #515
 
 
                 
