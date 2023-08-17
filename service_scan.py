@@ -421,9 +421,47 @@ def RDP_conn(target_host, port, username, password):
     except Exception as e:
         print("An error occurred:", str(e))
 
+def NNTPS_conn(target_host, port, username, password):
+    import nntplib
+    import ssl
+
+    # NNTPS 서버에 연결
+    try:
+        # Establish a secure connection using SSL
+        nntp_connection = nntplib.NNTP_SSL(target_host, port)
+        print("Success!")
+        return True
+    except nntplib.NNTPError as e:
+        print("NNTPS 에러:", e)
+        return None
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+
+def LDAPS_conn(target_host, port, username, password):
+    from ldap3 import Server, Connection, Tls, ALL
+    import ssl
+    # LDAP 서버 정보 설정
+    server = Server(target_host, port=port, use_ssl=True, get_info=ALL)
+
+    # TLS 설정 (인증서 유효성 검증을 수행하지 않음)
+    tls = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
+
+    # LDAP 서버에 연결
+    conn = Connection(server, user=username, password=password, auto_bind=True, auto_referrals=False, client_strategy='SYNC', authentication='SIMPLE', tls=tls)
+    if conn.bind():
+        print("Connected to LDAPS server")
+        # 연결 종료
+        conn.unbind()
+        return True
+    else:
+        print("Connection failed")
+        return False
+
+
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "171.244.136.200"
+    target_host = "173.255.242.215"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -433,7 +471,7 @@ def main():
     username = "username"
     password = "password"
     
-    port = 3389                                                                
+    port = 563                                                          
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #result = sock.connect_ex((target_host, port))
     
@@ -454,12 +492,17 @@ def main():
     #IMAP_conn(target_host, port, username, password) #143
     #IRC_conn(target_host, port, username, password) #194, 6667 #커넥션이 안끊겨
     #LDAP_conn(target_host, port, username, password)
-    #SSL_conn(target_host, port, username, password) #443
+    #SSL_conn(target_host, port, username, password) #44
     #SMB_conn(target_host, port, username, password) #445
     #SMTPS_conn(target_host, port, username, password) #465
     #LPD_conn(target_host, port, username, password) #515
     #Syslog_conn(target_host, port, username, password)#514 #메세지는 찍을 수 있으나 확인이 불가능함
-    RDP_conn(target_host, port, username, password)
+    #RDP_conn(target_host, port, username, password) # pywinrm 모듈 설치 불가
+    #NNTPS_conn(target_host, port, username, password)
+    #Message Submission #587 == SMTP 서비스와 동일
+    LDAPS_conn(target_host, port, username, password)
+
+
 
 
 
