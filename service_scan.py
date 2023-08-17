@@ -262,7 +262,7 @@ def NetBIOS_conn(target_host, port, username, password):
         print("An error occurred:", e)
         return False
 
-def IMAP_conn(target_host, port, username, password):
+def IMAPS_conn(target_host, port, username, password):
     import imaplib
     try:
         imap_server = imaplib.IMAP4_SSL(target_host)
@@ -439,29 +439,180 @@ def NNTPS_conn(target_host, port, username, password):
         return None
 
 def LDAPS_conn(target_host, port, username, password):
-    from ldap3 import Server, Connection, Tls, ALL
+    from ldap3 import Server, Connection, ALL
     import ssl
-    # LDAP 서버 정보 설정
-    server = Server(target_host, port=port, use_ssl=True, get_info=ALL)
+    from ldap3.core.exceptions import LDAPBindError
+    try:
+        # LDAP 서버 정보 설정
+        server = Server(target_host, port=port, use_ssl=True, get_info=ALL)
 
-    # TLS 설정 (인증서 유효성 검증을 수행하지 않음)
-    tls = Tls(validate=ssl.CERT_NONE, version=ssl.PROTOCOL_TLSv1_2)
+        # LDAP 서버에 연결
+        conn = Connection(server, user=username, password=password, auto_bind=True, auto_referrals=False, client_strategy='SYNC', authentication='SIMPLE')
 
-    # LDAP 서버에 연결
-    conn = Connection(server, user=username, password=password, auto_bind=True, auto_referrals=False, client_strategy='SYNC', authentication='SIMPLE', tls=tls)
-    if conn.bind():
-        print("Connected to LDAPS server")
-        # 연결 종료
-        conn.unbind()
+        if conn.bind():
+            print("Connected to LDAPS server")
+
+            try:
+                # TLS 설정 (인증서 유효성 검증을 수행하지 않음)
+                conn.start_tls(validate=ssl.CERT_NONE)
+
+                # 연결 종료
+                conn.unbind()
+                return True
+            except Exception as tls_error:
+                print("TLS setup failed:", str(tls_error))
+                return False
+        else:
+            print("Connection failed")
+            return False
+    except LDAPBindError as bind_error:
+        print("LDAP Bind failed:", str(bind_error))
         return True
-    else:
-        print("Connection failed")
+    except Exception as general_error:
+        print("An error occurred:", str(general_error))
         return False
+
+def Kerberos_conn(target_host, port, username, password):
+    import requests
+    from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+    try:
+        # Create a session with Kerberos authentication
+        session = requests.Session()
+        session.verify = False  # Ignore SSL verification for simplicity, consider removing this in production
+
+        auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        response = session.get(f"https://{target_host}:{port}", auth=auth)
+
+        if response.status_code == 200:
+            print("Authenticated successfully")
+        else:
+            print("Authentication failed. Status code:", response.status_code)
+    except Exception as e:
+        print("An error occurred:", e)
+
+def FTPS_conn(target_host, port, username, password):
+    from ftplib import FTP_TLS
+    from ftplib import FTP, error_perm
+    try:
+        ftps = FTP_TLS()
+        ftps.connect(target_host, port)
+        ftps.login(username, password)
+        print("FTPS Connection Success")
+        ftps.quit()
+        return True
+    except error_perm as e:
+        print(f"FTPS Connection Error: {e}")
+        return False
+    except Exception as e:
+        print(f"FTPS Error: {e}")
+        return False
+
+def IMAP_conn(target_host, port, username, password):
+    import imaplib
+    try:
+        imap_server = imaplib.IMAP4(target_host)
+        imap_server.login(username, password)
+        response = imap_server.select()  # Select a mailbox (e.g., "INBOX")
+        
+        if response[0] == 'OK':
+            return imap_server
+        else:
+            print("Login failed.")
+            return None
+    except imaplib.IMAP4.error as imap_error:
+        print("IMAP error:", imap_error)
+        return None
+    except Exception as e:
+        print("An unexpected error occurred:", e)
+        return None
+
+def POP3S_conn(target_host, port, username, password):
+    import poplib
+    try:
+        pop3s_connection = poplib.POP3_SSL(target_host, port)
+        pop3s_connection.user(username)
+        pop3s_connection.pass_(password)
+        print("POP3S Connection Success")
+        return True
+    except poplib.error_proto as e:
+        print("POP3S 연결 또는 로그인 오류:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+
+def MySQL_conn(target_host, port, username, password):
+    import mysql.connector
+    try:
+        connection = mysql.connector.connect(
+            host=target_host,
+            user=username,
+            password=password,
+            database="mysql"
+        )
+        if connection.is_connected():
+            print("Connected to MySQL")
+            connection.close()
+            return True
+    except mysql.connector.Error as e:
+        if e.errno == mysql.connector.errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Authentication error: Invalid credentials")
+            return True
+        elif e.errno == mysql.connector.errorcode.ER_BAD_DB_ERROR:
+            print("Database not found")
+        else:
+            print("Error:", e)
+        return None
+
+def RDP_conn(target_host, port, username, password):
+    import subprocess
+    import time
+    import pyautogui
+    try:
+        # Run the RDP client application (replace with the actual RDP client command)
+        rdp_client_cmd = f'mstsc /v:{target_host}'
+        subprocess.Popen(rdp_client_cmd, shell=True)
+
+        # Wait for the RDP client to open
+        time.sleep(5)
+
+        # Use pyautogui to interact with the RDP client window
+        pyautogui.write(username)
+        pyautogui.press('tab')
+        pyautogui.write(password)
+        pyautogui.press('enter')
+        
+        print("RDP Connection Success")
+        return True
+    except Exception as e:
+        print("RDP Connection Error:", e)
+        return False
+
+def PostgreSQL_conn(target_host, port, username, password):
+    from psycopg2 import errors
+    import psycopg2
+    try:
+        connection = psycopg2.connect(
+            host=target_host,
+            port=port,
+            database="postgres",
+            user=username,
+            password=password
+        )
+        if connection:
+            print("Connected to PostgreSQL")
+            return connection
+    except errors.OperationalError as e:
+        if e.pgcode == errors.InvalidPassword:
+            print("Invalid password or authentication error")
+        else:
+            print("Operational Error:", e)
+        return None
 
 
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "173.255.242.215"
+    target_host = "130.61.34.254"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -471,7 +622,7 @@ def main():
     username = "username"
     password = "password"
     
-    port = 563                                                          
+    port = 1521                       
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #result = sock.connect_ex((target_host, port))
     
@@ -493,14 +644,23 @@ def main():
     #IRC_conn(target_host, port, username, password) #194, 6667 #커넥션이 안끊겨
     #LDAP_conn(target_host, port, username, password)
     #SSL_conn(target_host, port, username, password) #44
-    #SMB_conn(target_host, port, username, password) #445
+    #SMB_conn(target_host, port, username, password) #445 #모듈수정
     #SMTPS_conn(target_host, port, username, password) #465
     #LPD_conn(target_host, port, username, password) #515
     #Syslog_conn(target_host, port, username, password)#514 #메세지는 찍을 수 있으나 확인이 불가능함
     #RDP_conn(target_host, port, username, password) # pywinrm 모듈 설치 불가
     #NNTPS_conn(target_host, port, username, password)
     #Message Submission #587 == SMTP 서비스와 동일
-    LDAPS_conn(target_host, port, username, password)
+    #LDAPS_conn(target_host, port, username, password) #636
+    #Kerberos_conn(target_host, port, username, password) #749 느낌상 서비스 있는 주소는 타임아웃이 나오는 것 같으나 확인 불가
+    #FTPS_conn(target_host, port, username, password) #990
+    #IMAPS_conn(target_host, port, username, password) #903
+    #POP3S_conn(target_host, port, username, password) #905
+    #MySQL_conn(target_host, port, username, password) # 3306
+    #RDP_conn(target_host, port, username, password) #3389
+    #PostgreSQL_conn(target_host, port, username, password) #5432
+
+
 
 
 
