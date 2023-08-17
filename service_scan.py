@@ -382,10 +382,48 @@ def LPD_conn(target_host, port, username, password):
     finally:
         sock.close()
 
+def Syslog_conn(target_host, port, username, password):
+    facility = 1  # 패시티 (예: user-level messages)
+    severity = 3  # 세버리티 (예: Critical)
+    message = "This is a test message"
+    
+    # 패시티(Facility)와 세버리티(Severity)를 계산하여 PRI 값을 생성합니다.
+    pri = facility * 8 + severity
+    
+    # syslog 메시지 포맷을 생성합니다.
+    syslog_message = f"<{pri}>{message}"
+    
+    # UDP 소켓을 생성합니다.
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    try:
+        # syslog 서버에 메시지를 전송합니다.
+        sock.sendto(syslog_message.encode("utf-8"), (target_host, port))
+        print("Syslog 메시지 전송 완료")
+    except Exception as e:
+        print(f"전송 중 오류 발생: {e}")
+    finally:
+        sock.close()
+
+def RDP_conn(target_host, port, username, password):
+    from pywinrm import Session
+
+    try:
+        session = Session(target_host, auth=(username, password))
+        response = session.run_ps("Write-Host 'Hello, Remote Desktop!'")
+        
+        if response.status_code == 0:
+            print("Command executed successfully:", response.std_out.decode('utf-8'))
+        else:
+            print("Command failed with exit code:", response.status_code)
+            print("Error output:", response.std_err.decode('utf-8'))
+
+    except Exception as e:
+        print("An error occurred:", str(e))
 
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "118.178.203.100"
+    target_host = "171.244.136.200"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -395,7 +433,7 @@ def main():
     username = "username"
     password = "password"
     
-    port = 515                                                                              
+    port = 3389                                                                
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #result = sock.connect_ex((target_host, port))
     
@@ -419,7 +457,10 @@ def main():
     #SSL_conn(target_host, port, username, password) #443
     #SMB_conn(target_host, port, username, password) #445
     #SMTPS_conn(target_host, port, username, password) #465
-    LPD_conn(target_host, port, username, password) #515
+    #LPD_conn(target_host, port, username, password) #515
+    #Syslog_conn(target_host, port, username, password)#514 #메세지는 찍을 수 있으나 확인이 불가능함
+    RDP_conn(target_host, port, username, password)
+
 
 
                 
