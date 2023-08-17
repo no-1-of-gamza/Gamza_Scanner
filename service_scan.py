@@ -1,10 +1,8 @@
 #Service_Scan
 import socket
 import threading
+import concurrent.futures
 
-open_Services = []
-closed_Services = []
-unknown_Services = []
 lock = threading.Lock()
 
 def banner_grabbing(target_host, target_port, sock):
@@ -609,20 +607,45 @@ def PostgreSQL_conn(target_host, port, username, password):
             print("Operational Error:", e)
         return None
 
+def try_service(target_host, port, username, password, service_func):
+    result = service_func(target_host,username, password, port)
+    if result:
+        return port, service_func.__name__
+    return None
+
+def service_scan_multi_threading(target_host, port_list,username, password):
+    print(f"service_scan_multi_threading: {target_host} , {port_list}")
+
+    services_to_try = [
+        HTTP_conn, FTP_conn, SSH_conn # Add more service functions here
+        # ...
+    ]
+    
+    open_ports = []
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(port_list)) as executor:
+        futures = [executor.submit(try_service, target_host, port, username, password,service_func) for port in port_list for service_func in services_to_try]
+        
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                port, service_name = result
+                open_ports.append((port, service_name))
+                print(f"Open port {port} for service {service_name}")
+                break  # You can remove this break if you want to continue scanning after finding an open port
+
+    return open_ports
 
 def main():
-    port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "130.61.34.254"
-    threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
         SMTP_conn, DNS_conn, TFTP_conn, finger_conn, HTTP_conn
     ]
-
+    
+    
     username = "username"
     password = "password"
-    
-    port = 1521                       
+                        
     #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     #result = sock.connect_ex((target_host, port))
     
@@ -659,14 +682,7 @@ def main():
     #MySQL_conn(target_host, port, username, password) # 3306
     #RDP_conn(target_host, port, username, password) #3389
     #PostgreSQL_conn(target_host, port, username, password) #5432
-
-
-
-
-
-
-
-                
+             
 if __name__ == "__main__":
     main()
 
