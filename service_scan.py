@@ -186,21 +186,244 @@ def HTTP_conn(target_host, port, username, password):
         print(f"Connection error occurred: {conn_err}")
     
     except requests.exceptions.RequestException as req_err:
-        print(f"Request error occurred: {req_err}") 
+        print(f"Request error occurred: {req_err}")
 
-def scan_thread(service_func, target_host, port, username, password):
-    result = service_func(target_host, port, username, password)
-    if result:
-        with lock:
-            open_Services.append((service_func.__name__, port))
+def POP3_conn(target_host, port, username, password):
+    import poplib
+    # POP3 서버에 연결
+    try:
+        pop3_connection = poplib.POP3(target_host)
+
+        # 계정 로그인
+        pop3_connection.user(username)
+        pop3_connection.pass_(password)
+                # 연결 및 로그인 성공 시, pop3_connection을 반환
+        return True
+
+    except poplib.error_proto as e:
+        print("POP3 연결 또는 로그인 오류:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+
+def Sunrpc_conn(target_host, port, username, password):
+    import xmlrpc.client
+
+    try:
+        # SunRPC 서버의 주소와 포트
+        server_address = f"{target_host}:{port}"
+
+        # XML-RPC 클라이언트 생성
+        client = xmlrpc.client.ServerProxy(server_address)
+
+        return True
+
+    except xmlrpc.client.Fault as e:
+        print("SunRPC 에러:", e.faultString)
+        return True
+    except ConnectionError as e:
+        print("연결 오류:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+        return None
+  
+def NNTP_conn(target_host, port, username, password):
+    
+    import nntplib
+    # NNTP 서버 정보
+    server_address = target_host
+    # NNTP 서버에 연결
+    try:
+        nntp_connection = nntplib.NNTP(server_address)
+        return True
+    except nntplib.NNTPError as e:
+        print("NNTP 에러:", e)
+        return True
+    except Exception as e:
+        print("알 수 없는 오류:", e)
+    finally:
+        nntp_connection.quit()
+
+def NetBIOS_conn(target_host, port, username, password):
+    from impacket import nmb
+    try:
+        netbios = nmb.NetBIOS()
+        name = netbios.getnetbiosname(target_host)
+            
+        if name:
+            print(f"IP address: {target_host} to host name : {name}")
+            return True
+        else:
+            print("Unable to resolve IP address for target.")
+            return False
+    except Exception as e:
+        print("An error occurred:", e)
+        return False
+
+def IMAP_conn(target_host, port, username, password):
+    import imaplib
+    try:
+        imap_server = imaplib.IMAP4_SSL(target_host)
+        imap_server.login(username, password)
+        response, _ = imap_server.login(username, password)
+        
+        if response == 'OK':
+            return imap_server
+        else:
+            print("Login failed.")
+            return None
+    except imaplib.IMAP4_SSL.error as ssl_error:
+        print("SSL error:", ssl_error)
+        return True
+    except imaplib.IMAP4.error as imap_error:
+        print("IMAP error:", imap_error)
+        return True
+    except Exception as e:
+        print("An unexpected error occurred:", e)
+        return None
+
+def IRC_conn(target_host, port, username, password):
+    import irc.client
+    class IRCClient(irc.client.SimpleIRCClient):
+        def on_welcome(self, connection, event):
+            print("Connected to the server.")
+    client = IRCClient()
+
+    try:
+        client.connect(target_host, port, username)
+        client.start()
+        client.connection.disconnect()
+        print("Disconnected to the server.")
+        return True
+    except irc.client.ServerConnectionError as e:
+        print("Error:", e)
+
+def LDAP_conn(target_host, port, username, password):
+    from ldap3 import Server, Connection
+    # LDAP 서버 정보 설정
+    server = Server(f'ldap://{target_host}:{port}')
+    # LDAP 서버에 연결
+    conn = Connection(server)
+    if conn.bind():
+        print("Connected to LDAP server")
+        # 연결 종료
+        conn.unbind()
+        return True
     else:
-        with lock:
-            closed_Services.append((service_func.__name__, port))
+        print("Connection failed") 
 
+def SSL_conn(target_host, port, username, password):
+    import ssl
+    server_address = (target_host, port)
+    # 소켓 생성
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    # SSL 연결 설정
+    ssl_sock = ssl.wrap_socket(sock, ssl_version=ssl.PROTOCOL_TLS)
+
+    try:
+        # 서버에 연결
+        ssl_sock.connect(server_address)
+
+        print("SSL connection established.")
+        return True
+
+    except socket.error as e:
+        print("Error:", e)
+
+    finally:
+        # 연결 종료
+        ssl_sock.close()
+
+def SMB_conn(target_host, port, username, password):
+    from smbprotocol import exceptions
+    import smbclient
+
+    try:
+        smbclient.register_session(target_host, username="username", password="password")
+    except exceptions.LogonFailure:
+        print('failed to login')
+    except ValueError:
+        print('no service')
+    else:
+        print('success to login')
+
+def SMTPS_conn(target_host, port, username, password):
+    import smtplib
+    result = ''
+    try:
+        smtp = smtplib.SMTP_SSL(target_host, port)
+        smtp.quit()
+        return True
+    except:
+        result = 'error'
+
+def LPD_conn(target_host, port, username, password):
+    lpd_signature = b'\x02'  # LPD 프로토콜의 헤더 시그니처
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((target_host, port))
+        
+        sock.settimeout(2)  # 소켓 응답 대기 시간 설정 (초)
+
+        data = sock.recv(1)  # 한 바이트 데이터를 읽음
+
+        if data == lpd_signature:
+            print("LPD service is identified.")
+        else:
+            print("Not an LPD service.")
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+
+    finally:
+        sock.close()
+
+def Syslog_conn(target_host, port, username, password):
+    facility = 1  # 패시티 (예: user-level messages)
+    severity = 3  # 세버리티 (예: Critical)
+    message = "This is a test message"
+    
+    # 패시티(Facility)와 세버리티(Severity)를 계산하여 PRI 값을 생성합니다.
+    pri = facility * 8 + severity
+    
+    # syslog 메시지 포맷을 생성합니다.
+    syslog_message = f"<{pri}>{message}"
+    
+    # UDP 소켓을 생성합니다.
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    try:
+        # syslog 서버에 메시지를 전송합니다.
+        sock.sendto(syslog_message.encode("utf-8"), (target_host, port))
+        print("Syslog 메시지 전송 완료")
+    except Exception as e:
+        print(f"전송 중 오류 발생: {e}")
+    finally:
+        sock.close()
+
+def RDP_conn(target_host, port, username, password):
+    from pywinrm import Session
+
+    try:
+        session = Session(target_host, auth=(username, password))
+        response = session.run_ps("Write-Host 'Hello, Remote Desktop!'")
+        
+        if response.status_code == 0:
+            print("Command executed successfully:", response.std_out.decode('utf-8'))
+        else:
+            print("Command failed with exit code:", response.status_code)
+            print("Error output:", response.std_err.decode('utf-8'))
+
+    except Exception as e:
+        print("An error occurred:", str(e))
 
 def main():
     port_list = [13, 21, 22, 23, 25, 53, 69, 79, 80]
-    target_host = "20.23.255.223"
+    target_host = "171.244.136.200"
     threads = []
     service_functions = [
         Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
@@ -210,35 +433,37 @@ def main():
     username = "username"
     password = "password"
     
-    port = 80
-
+    port = 3389                                                                
+    #sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #result = sock.connect_ex((target_host, port))
+    
+    #banner_grabbing(target_host, port, sock)
     #Daytime_conn(target_host, port) #13
     #FTP_conn(target_host, port, username, password) #21
     #SSH_conn(target_host, port, username, password) #22
     #telnet_conn(target_host, port) #23
     #SMTP_conn(target_host, port, username, password) #25
-    #DNS_conn(target_host) #53
+    #DNS_conn(target_host, port, username, password) #53
     #TFTP_conn(target_host, port) #69
     #finger_conn(target_host, port, username) #79
-    #HTTP_conn(target_host, port) #80
-
-    for port in port_list:
-        print(f"Scanning port {port}")
-
-        for service_func in service_functions:
-            thread = threading.Thread(target=scan_thread, args=(service_func, target_host, port, username, password))
-            threads.append(thread)
-            thread.start()
-
-    for thread in threads:
-        thread.join()
-
-    print("Open Services:", open_Services)
-    print("Closed Services:", closed_Services)
-    print("Unknown Services:", unknown_Services)
+    #HTTP_conn(target_host, port, username, password) #80
+    #POP3_conn(target_host, port, username, password) #110
+    #Sunrpc_conn(target_host, port, username, password) #111
+    #NNTP_conn(target_host, port, username, password) #119
+    #NetBIOS_conn(target_host, port, username, password) #139
+    #IMAP_conn(target_host, port, username, password) #143
+    #IRC_conn(target_host, port, username, password) #194, 6667 #커넥션이 안끊겨
+    #LDAP_conn(target_host, port, username, password)
+    #SSL_conn(target_host, port, username, password) #443
+    #SMB_conn(target_host, port, username, password) #445
+    #SMTPS_conn(target_host, port, username, password) #465
+    #LPD_conn(target_host, port, username, password) #515
+    #Syslog_conn(target_host, port, username, password)#514 #메세지는 찍을 수 있으나 확인이 불가능함
+    RDP_conn(target_host, port, username, password)
 
 
 
+                
 if __name__ == "__main__":
     main()
 
