@@ -50,7 +50,7 @@ def tcp_scan(host, port,thread_ids):
     # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.15)
+        sock.settimeout(0.2)
         result = sock.connect_ex((host, port))
         if result == 0:
             return thread_id, port, True, sock, result
@@ -71,3 +71,6 @@ def tcp_scan(host, port,thread_ids):
     except socket.error:
         print("Couldn't connect to server.")
         sys.exit()
+    finally:
+        if sock:
+            sock.close()

@@ -419,6 +419,19 @@ def RDP_conn(target_host, port, username, password):
     except Exception as e:
         print("An error occurred:", str(e))
 
+    try:
+        session = Session(target_host, auth=(username, password))
+        response = session.run_ps("Write-Host 'Hello, Remote Desktop!'")
+        
+        if response.status_code == 0:
+            print("Command executed successfully:", response.std_out.decode('utf-8'))
+        else:
+            print("Command failed with exit code:", response.status_code)
+            print("Error output:", response.std_err.decode('utf-8'))
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+
 def NNTPS_conn(target_host, port, username, password):
     import nntplib
     import ssl
@@ -568,7 +581,7 @@ def RDP_conn(target_host, port, username, password):
     import pyautogui
     try:
         # Run the RDP client application (replace with the actual RDP client command)
-        rdp_client_cmd = f'mstsc /v:{target_host}'
+        rdp_client_cmd = f"mstsc /v:{target_host}"
         subprocess.Popen(rdp_client_cmd, shell=True)
 
         # Wait for the RDP client to open
@@ -637,12 +650,8 @@ def service_scan_multi_threading(target_host, port_list,username, password):
     return open_ports
 
 def main():
-    service_functions = [
-        Daytime_conn, FTP_conn, SSH_conn, telnet_conn,
-        SMTP_conn, DNS_conn, TFTP_conn, finger_conn, HTTP_conn
-    ]
-    
-    
+    target_host="193.178.147.114"
+    port=3389
     username = "username"
     password = "password"
                         
@@ -680,7 +689,8 @@ def main():
     #IMAPS_conn(target_host, port, username, password) #903
     #POP3S_conn(target_host, port, username, password) #905
     #MySQL_conn(target_host, port, username, password) # 3306
-    #RDP_conn(target_host, port, username, password) #3389
+    RDP_conn(target_host, port, username, password) #3389
+    
     #PostgreSQL_conn(target_host, port, username, password) #5432
              
 if __name__ == "__main__":
