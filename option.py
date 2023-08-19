@@ -1,10 +1,14 @@
 import argparse
+def parse_ports(ports_arg):
+    parsed_ports = [min(max(int(port), 1), 1000) for port in ports_arg.split()]
+    return parsed_ports
+
 def option_set():
     parser = argparse.ArgumentParser(description="Gamza Scanner - 포트 스캐닝 도구")
     parser.add_argument("target_host", help="대상 호스트의 IP 주소")
-    parser.add_argument("-p", "--ports", nargs="+", type=int, default=range(1, 8001),
+    parser.add_argument("-p", "--ports", nargs="+", type=int, default=range(1, 10000),
                         help="스캔할 특정 포트 번호 (공백으로 구분하여 입력)")
-    parser.add_argument("-t", "--threads", type=int, default=16, help="Thread")
+    parser.add_argument("-t", "--threads", type=int, default=5, help="Thread")
     parser.add_argument("-sT", "--tcp", action="store_true", default=True, help="TCP Scan")
     '''
     기본 사용법: python Gamza_Scanner.py 192.168.1.1
@@ -14,5 +18,4 @@ def option_set():
     TCP 스캔 수행 : python Gamza_Scanner.py 192.168.1.1 -sT
     '''
     return parser.parse_args()
-
 

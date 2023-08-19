@@ -14,10 +14,10 @@ def print_welcome_message():
 
 
 def port_result_printing(thread_ids, filtered_ports, closed_ports, open_ports):
-    print("\nUsed thread IDs:")
-    print(', '.join(map(str, thread_ids)))
+    #print("\nUsed thread IDs:")
+    #print(', '.join(map(str, thread_ids)))
 
-    print(f"\nTotal used thread IDs: {len(thread_ids)}")
+    #print(f"\nTotal used thread IDs: {len(thread_ids)}")
 
     closed_ports.sort()  
     open_ports.sort()   
@@ -35,5 +35,26 @@ def port_result_printing(thread_ids, filtered_ports, closed_ports, open_ports):
     print(f"\nTotal open ports: {len(open_ports)}")
     print(f"Total closed ports: {len(closed_ports)}")
     print(f"Total filtered ports: {len(filtered_ports)}")
+
+
+def print_dict(dictionary):
+    for key, value in dictionary.items():
+        print(f"{key}: {value}")
+
+def service_result_printing(Detected_service, Closed_service, Not_Detected_service):
+
+    print("\nDetected_service:")
+    print(Detected_service)
+
+    print("\nClosed_service:")
+    print(Closed_service)
+
+    print("\nNot_Detected_service port")
+    print(', '.join(map(str, Not_Detected_service)))
+    
+        
+    print(f"\nTotal open services: {len(Detected_service)}")
+    print(f"Total closed services: {len(Closed_service)}")
+    print(f"Total not detected services: {len(Not_Detected_service)}")
     
     

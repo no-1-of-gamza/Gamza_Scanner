@@ -34,6 +34,7 @@ def port_scan_multi_threading(num_threads, thread_ids, target_host, ports, scan)
 
     port_result_printing(thread_ids, filtered_ports, closed_ports, open_ports)
     
+
     return open_ports
 
 
@@ -50,7 +51,7 @@ def tcp_scan(host, port,thread_ids):
     # time.sleep(0.5) TCP 연결 상태보고 조절 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(0.2)
+        sock.settimeout(1)
         result = sock.connect_ex((host, port))
         if result == 0:
             return thread_id, port, True, sock, result

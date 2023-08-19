@@ -99,7 +99,7 @@ def SMTP_conn(target_host, port, username, password):
 def Daytime_conn(target_host, port, username, password):
     import re
     service_name="Daytime"
-    try:
+    try: 
         # 소켓 생성 및 연결
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((target_host, port))
@@ -172,11 +172,13 @@ def DNS_conn(target_host, port, username, password):
 def TFTP_conn(target_host, port, username, password):
     from tftpy import TftpClient, TftpTimeout
     service_name="TFTP"
-    client = TftpClient(target_host, port)
     try:
         client = TftpClient(target_host, port)
         #print("TFTP Connection Successful")
-        return (True, service_name)
+        if client:
+            return (True, service_name)
+        else :
+            return (None, service_name)
     except TftpTimeout:
         #print("TFTP Connection Timed Out")
         return (None, service_name)
@@ -211,8 +213,8 @@ def HTTP_conn(target_host, port, username, password):
     try:
         url = f"http://{target_host}:{port}"
         response = requests.get(url)
-        response.raise_for_status()  # 응답 상태 코드 확인
-     
+        #response.raise_for_status()  # 응답 상태 코드 확인
+        socket.setdefaulttimeout(5)  
         #print("Successful connection!")
         return (True, service_name)
     
@@ -367,7 +369,7 @@ def SSL_conn(target_host, port, username, password):
         return (True, service_name)
 
     except socket.error as e:
-        print("Error:", e)
+        #print("Error:", e)
         return (None, service_name)
 
     finally:
@@ -445,25 +447,6 @@ def Syslog_conn(target_host, port, username, password):
         #print(f"전송 중 오류 발생: {e}")
     #finally:
         sock.close()
-
-def RDP_conn(target_host, port, username, password):
-    from pywinrm import Session
-    service_name="RDP"
-    try:
-        session = Session(target_host, auth=(username, password))
-        response = session.run_ps("Write-Host 'Hello, Remote Desktop!'")
-        
-        if response.status_code == 0:
-            #print("Command executed successfully:", response.std_out.decode('utf-8'))
-            return (True, service_name)
-        else:
-            #print("Command failed with exit code:", response.status_code)
-            #print("Error output:", response.std_err.decode('utf-8'))
-            return (True, service_name)
-
-    except Exception as e:
-        #print("An error occurred:", str(e))
-        return (None, service_name)
 
 def NNTPS_conn(target_host, port, username, password):
     import nntplib
@@ -635,7 +618,8 @@ def RDP_conn(target_host, port, username, password):
         pyautogui.press('tab')
         pyautogui.write(password)
         pyautogui.press('enter')
-        
+        if rdp_client_cmd=="/bin/sh: mstsc: command not found":
+            return (None, service_name)
         #print("RDP Connection Success")
         return (True, service_name)
     except Exception as e:
@@ -681,21 +665,21 @@ def service_scan_multi_threading(target_host, open_ports,username, password):
     telnet_conn,
     SMTP_conn,
     DNS_conn,
-    TFTP_conn,
-    finger_conn,
+    #TFTP_conn,
+    #finger_conn,
     HTTP_conn,
     POP3_conn,
     Sunrpc_conn,
-    NNTP_conn,
+    #NNTP_conn,
     NetBIOS_conn,
     IMAP_conn,
-    IRC_conn,
-    LDAP_conn,
+    #IRC_conn,
+    #LDAP_conn,
     SSL_conn,
     SMB_conn,
     SMTPS_conn,
     LPD_conn,
-    Syslog_conn,
+    #Syslog_conn,
     RDP_conn,
     NNTPS_conn,
     LDAPS_conn,
@@ -726,7 +710,6 @@ def service_scan_multi_threading(target_host, open_ports,username, password):
                 else :
                     Not_Detected_service.append(port)
                     
-    Not_Detected_service=list(set(Not_Detected_service))
     service_result_printing(Detected_service, Closed_service, Not_Detected_service)
             
 
