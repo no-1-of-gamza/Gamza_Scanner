@@ -80,7 +80,6 @@ def SMTP_conn(target_host, port, username, password):
     from smtplib import SMTPAuthenticationError
     service_name="SMTP"
     try:
-
         # SMTP 서버에 접속
         smtp_server = smtplib.SMTP(target_host, port)
         #smtp_server.starttls()
@@ -618,10 +617,11 @@ def RDP_conn(target_host, port, username, password):
         pyautogui.press('tab')
         pyautogui.write(password)
         pyautogui.press('enter')
-        if rdp_client_cmd=="/bin/sh: mstsc: command not found":
+        if rdp_client_cmd.find("command not")==-1:
             return (None, service_name)
         #print("RDP Connection Success")
-        return (True, service_name)
+        else :
+            return (True, service_name)
     except Exception as e:
         #print("RDP Connection Error:", e)
         return (None, service_name)
@@ -716,8 +716,8 @@ def service_scan_multi_threading(target_host, open_ports,username, password):
 def main():
     #just test service scan this file
 
-    target_host="127.0.0.1"
-    port=22
+    target_host="212.129.54.55"
+    port=25
     username = "username"
     password = "password"
     
