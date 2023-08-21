@@ -1,6 +1,6 @@
 aiohttp==3.8.5
 aiosignal==1.3.1
-altgraph @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot1/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/altgraph-0.17.2-py2.py3-none-any.whl
+altgraph 
 annotated-types==0.5.0
 async-timeout==4.0.2
 attrs==23.1.0
@@ -23,7 +23,7 @@ entrypoint2==1.1
 exceptiongroup==1.1.2
 Flask==2.3.2
 frozenlist==1.4.0
-future @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot1/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/future-0.18.2-py3-none-any.whl
+future 
 gssapi==1.8.2
 h11==0.14.0
 idna==3.4
@@ -42,8 +42,7 @@ Jinja2==3.1.2
 krb5==0.5.0
 ldap3==2.9.1
 ldapdomaindump==0.9.4
-macholib @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot1/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/macholib-1.15.2-py2.py3-none-any.whl
-MarkupSafe==2.1.3
+macholib 
 more-itertools==10.1.0
 MouseInfo==0.1.3
 mss==9.0.1
@@ -86,7 +85,7 @@ requests-ntlm==1.2.0
 rubicon-objc==0.4.6
 scapy==2.5.0
 selenium==4.11.2
-six @ file:///System/Volumes/Data/SWE/Apps/DT/BuildRoots/BuildRoot1/ActiveBuildRoot/Library/Caches/com.apple.xbs/Sources/python3/python3-124/six-1.15.0-py2.py3-none-any.whl
+six 
 smbprotocol==1.10.1
 sniffio==1.3.0
 sortedcontainers==2.4.0
