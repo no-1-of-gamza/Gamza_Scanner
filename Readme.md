@@ -23,6 +23,14 @@ pip install -r requirements.txt
 ```python
 Gamza_Scanner.py IP
 ```
+---
+## How to Modify Option
+1. Option.py
+Modify Default Option Like Multi Thread numbers(Just Port Scan), PortRange
+2. Port_Scan.py
+Modify Port Scanning Method
+3. Service_Scan.py
+Modify Service Scanning Method and Test Service Scan Separately
 
 ---
 ## *Notice
