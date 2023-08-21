@@ -13,19 +13,16 @@ not limited to the previously known well-known service matching, and uses the po
 
 ---
 ## How to Use
-1. Download all files in repository
-2. Unzip this project folder and Run "Gamza_Scanner.py"
-```python
-python3 Gamza_Scanner.py [IP]
-```
-3. Please Pip install requirements before run this Scanner
+1. Download all files in repository and unzip this project
+2. Please Pip install requirements before run this Scanner
 ```python
 pip install -r requirements.txt
 ```
-4. Use example
+3. Go to project folder and Run "Gamza_Scanner.py"
 ```python
 python3 Gamza_Scanner.py [IP]
 ```
+
 ---
 ## How to Modify Option
 1. Option.py
