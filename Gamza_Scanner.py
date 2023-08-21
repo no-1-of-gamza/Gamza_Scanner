@@ -5,7 +5,7 @@ import random
 from print_message import print_welcome_message
 from option import option_set
 from port_scan import port_scan_multi_threading, tcp_scan
-from service_scan import service_scan_multi_threading
+from service_scan import service_scan_service_banner
 
     
 def main():
@@ -36,7 +36,7 @@ def main():
     print(f"\nProtocol : TCP \nDetected Ports : {start_num}~{end_num} \nTarget Host :({target_host})\n")
 
     #서비스 스캔
-    service_scan_multi_threading(target_host, open_ports,username="username",password="password")
+    service_scan_service_banner(target_host, open_ports,username="username",password="password")
 
 if __name__ == "__main__":
     main()

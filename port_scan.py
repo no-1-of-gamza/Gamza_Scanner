@@ -42,7 +42,7 @@ def tcp_scan(host, port,thread_ids):
 
     scan =tcp_scan
 
-    lock = threading.Lock()
+    lock = threading.Lock() 
     
     with lock:
         thread_id = threading.get_ident()

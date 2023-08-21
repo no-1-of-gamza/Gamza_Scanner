@@ -3,7 +3,7 @@ import socket
 import threading
 import concurrent.futures
 from print_message import service_result_printing
-
+from tqdm import tqdm 
 
 
 lock = threading.Lock()
@@ -11,8 +11,7 @@ lock = threading.Lock()
 def banner_grabbing(target_host, target_port, sock):
     try: 
         sock.send(b'POST / HTTP/1.1\r\nHost: ' + target_host.encode() + b'\r\n\r\n')
-        # 보내는 정보를 고도화 할 필요가 있음 악성패킷으로 인식가능     
-        # 배너 정보 수신
+        # 보내는 정보를 고도화 할 필요가 있음 악성패킷으로 인식가능 
         banner = sock.recv(4096).decode().strip()
         
         banner_lines = banner.split('\n')
@@ -21,11 +20,14 @@ def banner_grabbing(target_host, target_port, sock):
         #print(f"{banner}")
         return banner   
     except ConnectionRefusedError:
-        print(f"Connection refused: {target_host}:{target_port}")
+        #print(f"Connection refused: {target_host}:{target_port}")
+        pass
     except socket.timeout:
-        print(f"Connection timeout: {target_host}:{target_port}")
+        #print(f"Connection timeout: {target_host}:{target_port}")
+        pass
     except socket.error as e:
-        print(f"Error: {e}")
+        #print(f"Error: {e}")
+        pass
     finally:
     # 소켓 종료
         sock.close()
@@ -59,7 +61,7 @@ def SSH_conn(target_host, port, username, password):
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         timeout = 10
         # SSH 서버에 접속
-        ssh_client.connect(target_host, port=port, username=username, password=password, timeout=timeout,banner_timeout=timeout,auth_timeout=timeout)
+        ssh_client.connect(target_host, port=port, username=username, password=password, timeout=timeout,banner_timeout=timeout,auth_timeout=timeout, TimeoutError=False)
         
         # 접속 성공 메시지 출력
         #print("SSH Connection Success")
@@ -154,16 +156,14 @@ def DNS_conn(target_host, port, username, password):
     import dns.resolver
     service_name="DNS"
     try:
-        # IP 주소를 PTR 레코드 형식으로 변환
         ptr_query = dns.reversename.from_address(target_host)
-
-        # PTR 쿼리 보내기
         result = dns.resolver.resolve(ptr_query, 'PTR')
+        val = "SMTP" in result
+        if val :
+            return (True, "SMTP")
+        else :
+            return (True, service_name)
 
-        # 응답 출력
-        #for answer in result:
-            #print(f"Domain: {answer.target}")
-        return (True, service_name)
     except Exception as e:
         #print(f"DNS Error: {e}")
         return (None, service_name)
@@ -655,69 +655,81 @@ def try_service(target_host, port, username, password, service_func):
     print(result)
     return result
 
-def service_scan_multi_threading(target_host, open_ports,username, password):
-   #print(f"service_scan_multi_threading: {target_host} , {open_ports}")
+def service_scan_service_banner(target_host, open_ports,username, password):
 
     services_to_try = [
-   Daytime_conn,
-    FTP_conn,
-    SSH_conn,
-    telnet_conn,
-    SMTP_conn,
-    DNS_conn,
-    #TFTP_conn,
+   
+    FTP_conn,SSH_conn,telnet_conn,SMTP_conn,DNS_conn,HTTP_conn,POP3_conn,NetBIOS_conn,IMAP_conn,SSL_conn,SMB_conn,SSL_conn,LPD_conn,
+    RDP_conn, MySQL_conn, RDP_conn,#(RDP:Only Window)
+    PostgreSQL_conn,Daytime_conn
+    # If want Detected this service, please remove # on the line
+    #TFTP_conn, 
     #finger_conn,
-    HTTP_conn,
-    POP3_conn,
-    Sunrpc_conn,
+    #Sunrpc_conn,
     #NNTP_conn,
-    NetBIOS_conn,
-    IMAP_conn,
     #IRC_conn,
     #LDAP_conn,
-    SSL_conn,
-    SMB_conn,
-    SMTPS_conn,
-    LPD_conn,
+    #SMTPS_conn,
     #Syslog_conn,
-    RDP_conn,
-    NNTPS_conn,
-    LDAPS_conn,
-    Kerberos_conn,
-    FTPS_conn,
-    IMAPS_conn,
-    POP3S_conn,
-    MySQL_conn,
-    RDP_conn,
-    PostgreSQL_conn
-
+    #NNTPS_conn,
+    #LDAPS_conn,
+    #Kerberos_conn,
+    #FTPS_conn,
+    #IMAPS_conn,
+    #POP3S_conn,
     ]
 
     Detected_service={}
     Closed_service={}
     Not_Detected_service=[]
+    banner={}
+
     
-    for port in open_ports :
-            for service in services_to_try:
-                service_status, service_name =service(target_host, port, username, password)
-                print(f"{port}:{service_name}:{service_status}")
-                if service_status:
-                    Detected_service[port]=service_name
-                    break
-                elif service_status=="Closed":
-                    Closed_service[port]=service_name
-                    break
-                else :
-                    Not_Detected_service.append(port)
-                    
-    service_result_printing(Detected_service, Closed_service, Not_Detected_service)
+    with tqdm(total=len(open_ports), desc="Scanning Serivces", unit="port") as pbar:
+        for port in open_ports:
+            pbar.update(1)
+            service_Detected = False
             
+            for service_func in services_to_try:
+                service_status, service_name = service_func(target_host, port, username, password)
+                
+                if service_status:
+                    Detected_service[port] = service_name
+                    service_Detected = True
+                    break
+                elif service_status == "Closed":
+                    Closed_service[port] = service_name
+                    service_Detected = True
+                    break
+            
+            if not service_Detected:
+                Not_Detected_service.append(port)
 
+    service_result_printing(Detected_service, Closed_service, Not_Detected_service)
+    
+    with tqdm(total=len(open_ports), desc="Banner Info", unit="port") as pbar:
+        for port in open_ports:
+            pbar.update(1)
+            
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            
+            banner_info = banner_grabbing(target_host, port, sock)
+            if banner_info is not None:
+                service_name = banner_info 
+                banner[port] = service_name
+    
+    print("Banner Infomation:")
+    for port, service_name in banner.items():
+        print(f"Port {port}: {service_name}")
+        
 def main():
-    #just test service scan this file
-
-    target_host="212.129.54.55"
-    port=25
+    #just test service scan this codes
+    #submit targethost, port, username, password
+    #remove # you want to detect service separately
+     
+    target_host="test.kr"
+    port=22
     username = "username"
     password = "password"
     
@@ -736,24 +748,23 @@ def main():
     #NNTP_conn(target_host, port, username, password) #119
     #NetBIOS_conn(target_host, port, username, password) #139
     #IMAP_conn(target_host, port, username, password) #143
-    #IRC_conn(target_host, port, username, password) #194, 6667 #커넥션이 안끊겨
+    #IRC_conn(target_host, port, username, password) #194, 6667
     #LDAP_conn(target_host, port, username, password)
     #SSL_conn(target_host, port, username, password) #44
     #SMB_conn(target_host, port, username, password) #445 #모듈수정
     #SMTPS_conn(target_host, port, username, password) #465
     #LPD_conn(target_host, port, username, password) #515
-    #Syslog_conn(target_host, port, username, password)#514 #메세지는 찍을 수 있으나 확인이 불가능함
-    #RDP_conn(target_host, port, username, password) # pywinrm 모듈 설치 불가
+    #Syslog_conn(target_host, port, username, password)#514
     #NNTPS_conn(target_host, port, username, password)
     #Message Submission #587 == SMTP 서비스와 동일
     #LDAPS_conn(target_host, port, username, password) #636
-    #Kerberos_conn(target_host, port, username, password) #749 느낌상 서비스 있는 주소는 타임아웃이 나오는 것 같으나 확인 불가
+    #Kerberos_conn(target_host, port, username, password) #749
     #FTPS_conn(target_host, port, username, password) #990
     #IMAPS_conn(target_host, port, username, password) #903
     #POP3S_conn(target_host, port, username, password) #905
     #MySQL_conn(target_host, port, username, password) # 3306
     #RDP_conn(target_host, port, username, password) #3389
-    #PostgreSQL_conn(target_host, port, username, password) #5432
+    #PostgreSQL_conn(target_host, port, username, password)#5432
              
 if __name__ == "__main__":
     main()
