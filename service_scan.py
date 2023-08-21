@@ -700,12 +700,11 @@ def service_scan_service_banner(target_host, open_ports,username, password):
             sock.settimeout(1)
             
             banner_info = banner_grabbing(target_host, port, sock)
-            if banner_info is not None:
-                service_name = banner_info 
-                banner[port] = service_name
+            if banner_info:
+                banner[port] = banner_info
     
     print("Banner Infomation:")
-    for port, service_name in banner.items():
+    for port, banner_info in banner.items():
         print(f"Port {port}: {service_name}")
         
 def main():
