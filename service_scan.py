@@ -644,7 +644,7 @@ def service_scan_service_banner(target_host, open_ports,username, password):
     services_to_try = [
    
     FTP_conn,SSH_conn,SMTP_conn,DNS_conn,HTTP_conn,POP3_conn,NetBIOS_conn,IMAP_conn,SSL_conn,SMB_conn,LPD_conn,
-    RDP_conn, MySQL_conn, RDP_conn,#(RDP:Only Window)
+    MySQL_conn, RDP_conn,#(RDP:Only Window)
     PostgreSQL_conn,Daytime_conn,telnet_conn,
     # If want Detected this service, please remove # on the line
     #TFTP_conn, 
