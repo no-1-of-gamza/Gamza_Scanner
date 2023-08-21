@@ -31,6 +31,8 @@ Modify Default Option Like Multi Thread numbers(Just Port Scan), PortRange
 Modify Port Scanning Method
 3. Service_Scan.py
 Modify Service Scanning Method and Test Service Scan Separately
+* Help for Kerberos for Windows Error 
+* -> Please Download Kerberos for Windows MSI (https://web.mit.edu/KERBEROS/dist) 
 
 ---
 ## *Notice
