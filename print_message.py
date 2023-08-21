@@ -7,7 +7,7 @@ def print_welcome_message():
     | |_\ \| (_| || | | | | | / / | (_| | /\__/ /| (__ | (_| || | | || | | ||  __/| |   
     \____/ \__,_||_| |_| |_|/___| \__,_| \____/  \___| \__,_||_| |_||_| |_| \___||_| 
 
-    Welcome to Port Scanner!
+    Welcome to Gamza Scanner!
 
     """
     print(welcome_message)

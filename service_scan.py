@@ -11,7 +11,6 @@ lock = threading.Lock()
 def banner_grabbing(target_host, target_port, sock):
     try: 
         sock.send(b'POST / HTTP/1.1\r\nHost: ' + target_host.encode() + b'\r\n\r\n')
-        # 보내는 정보를 고도화 할 필요가 있음 악성패킷으로 인식가능 
         banner = sock.recv(4096).decode().strip()
         
         banner_lines = banner.split('\n')
@@ -29,7 +28,6 @@ def banner_grabbing(target_host, target_port, sock):
         #print(f"Error: {e}")
         pass
     finally:
-    # 소켓 종료
         sock.close()
 
 def FTP_conn(target_host, port, username, password):
@@ -37,8 +35,6 @@ def FTP_conn(target_host, port, username, password):
     service_name = "FTP"
     from ftplib import FTP
     try:
-        # FTP 서버 정보
-        # FTP 서버에 접속
         ftp = FTP(target_host)
         ftp.login(user=username, passwd=password)
         #print("FTP Connection Success")
@@ -56,16 +52,12 @@ def SSH_conn(target_host, port, username, password):
 
     service_name="SSH"
     try:
-        # SSH 클라이언트 객체 생성
         ssh_client = paramiko.SSHClient()
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         timeout = 10
-        # SSH 서버에 접속
         ssh_client.connect(target_host, port=port, username=username, password=password, timeout=timeout,banner_timeout=timeout,auth_timeout=timeout, TimeoutError=False)
         
-        # 접속 성공 메시지 출력
         #print("SSH Connection Success")
-        # 연결 종료
         ssh_client.close()
         return (True, service_name)
     except paramiko.AuthenticationException as e:
@@ -82,12 +74,9 @@ def SMTP_conn(target_host, port, username, password):
     from smtplib import SMTPAuthenticationError
     service_name="SMTP"
     try:
-        # SMTP 서버에 접속
         smtp_server = smtplib.SMTP(target_host, port)
-        #smtp_server.starttls()
         smtp_server.login(username, password)
 
-        # 접속 종료
         smtp_server.quit()
         return (True, service_name)
     except SMTPAuthenticationError as e:
@@ -101,15 +90,11 @@ def Daytime_conn(target_host, port, username, password):
     import re
     service_name="Daytime"
     try: 
-        # 소켓 생성 및 연결
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((target_host, port))
 
-        # 데이터 수신
         data = client_socket.recv(1024)
         daytime_data = data.decode('utf-8').strip()
-
-        # 소켓 닫기
         client_socket.close()
         pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})"
 
@@ -130,18 +115,17 @@ def telnet_conn(target_host, port, username, password):
     import telnetlib
     service_name="telnet"
     try:
-        tn = telnetlib.Telnet(target_host, port)  # Telnet 연결 시도
-        tn.read_until(b"login: ")  # 로그인 프롬프트 기다림
-        tn.write(username.encode('utf-8') + b"\n")  # 사용자 이름 전송
-        tn.read_until(b"Password: ")  # 비밀번호 프롬프트 기다림
-        tn.write(password.encode('utf-8') + b"\n")  # 비밀번호 전송
-        tn.read_until(b"$ ")  # 프롬프트 기다림
+        tn = telnetlib.Telnet(target_host, port) 
+        tn.read_until(b"login: ") 
+        tn.write(username.encode('utf-8') + b"\n") 
+        tn.read_until(b"Password: ")  
+        tn.write(password.encode('utf-8') + b"\n")  
+        tn.read_until(b"$ ")  
 
-        # 명령 실행 예시
         tn.write(b"ls -l\n")
         result = tn.read_until(b"$ ").decode('utf-8')
 
-        tn.close()  # 연결 종료
+        tn.close()
         print(f"tn : {tn}")
         if tn is not None:
             return (True, service_name)
@@ -659,9 +643,9 @@ def service_scan_service_banner(target_host, open_ports,username, password):
 
     services_to_try = [
    
-    FTP_conn,SSH_conn,telnet_conn,SMTP_conn,DNS_conn,HTTP_conn,POP3_conn,NetBIOS_conn,IMAP_conn,SSL_conn,SMB_conn,SSL_conn,LPD_conn,
+    FTP_conn,SSH_conn,SMTP_conn,DNS_conn,HTTP_conn,POP3_conn,NetBIOS_conn,IMAP_conn,SSL_conn,SMB_conn,LPD_conn,
     RDP_conn, MySQL_conn, RDP_conn,#(RDP:Only Window)
-    PostgreSQL_conn,Daytime_conn
+    PostgreSQL_conn,Daytime_conn,telnet_conn,
     # If want Detected this service, please remove # on the line
     #TFTP_conn, 
     #finger_conn,
@@ -687,10 +671,11 @@ def service_scan_service_banner(target_host, open_ports,username, password):
     
     with tqdm(total=len(open_ports), desc="Scanning Serivces", unit="port") as pbar:
         for port in open_ports:
-            pbar.update(1)
+            pbar.update(1)   
             service_Detected = False
             
             for service_func in services_to_try:
+                
                 service_status, service_name = service_func(target_host, port, username, password)
                 
                 if service_status:
@@ -702,7 +687,7 @@ def service_scan_service_banner(target_host, open_ports,username, password):
                     service_Detected = True
                     break
             
-            if not service_Detected:
+            if service_Detected==False:
                 Not_Detected_service.append(port)
 
     service_result_printing(Detected_service, Closed_service, Not_Detected_service)
